@@ -12,19 +12,19 @@
             font-family: 'Courier New', Courier, monospace;
             text-align: center;
             margin: 0;
-            padding: 50px;
+            padding: 30px;
         }
 
         h1 {
             color: #00ffcc;
             text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
             font-size: 2.8rem;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
 
         .subtitle {
             color: #888;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             font-size: 1.1rem;
         }
 
@@ -33,24 +33,24 @@
             text-shadow: 0 0 8px #ff00ff;
         }
 
-        #auth-section, #game-section {
+        .card {
             background-color: #1a1a24;
             border: 2px solid #00ffcc;
             box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
             border-radius: 10px;
             display: inline-block;
-            padding: 30px;
-            max-width: 400px;
+            padding: 25px;
+            max-width: 450px;
             width: 100%;
-            margin-top: 20px;
+            margin-top: 15px;
         }
 
         input {
             background-color: #0d0d11;
             border: 1px solid #ff00ff;
             color: #ffffff;
-            padding: 12px;
-            margin: 10px 0;
+            padding: 10px;
+            margin: 8px 0;
             width: 85%;
             border-radius: 5px;
             font-size: 1rem;
@@ -66,10 +66,10 @@
             background-color: #ff00ff;
             color: white;
             border: none;
-            padding: 12px 20px;
-            margin: 10px 5px;
+            padding: 10px 18px;
+            margin: 8px 5px;
             border-radius: 5px;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: bold;
             cursor: pointer;
             text-transform: uppercase;
@@ -89,6 +89,29 @@
             font-size: 1.2rem;
             text-shadow: 0 0 5px #ffd700;
         }
+
+        .game-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .game-item {
+            background: #121214;
+            border: 1px solid #ff00ff;
+            padding: 12px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #admin-panel {
+            border-color: #ffd700;
+            margin-top: 20px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -96,7 +119,7 @@
     <div class="subtitle">Klasik Jetonlu Arcade Deneyimi</div>
 
     <!-- Giriş / Kayıt Formu -->
-    <div id="auth-section">
+    <div id="auth-section" class="card">
         <h3>Giriş Yap / Kayıt Ol</h3>
         <input type="email" id="email" placeholder="E-posta adresiniz"><br>
         <input type="password" id="password" placeholder="Şifreniz"><br>
@@ -104,86 +127,92 @@
         <button onclick="signIn()">Giriş Yap</button>
     </div>
 
-    <!-- Oyuncu Paneli -->
-    <div id="game-section" style="display:none;">
-        <h3>Hoş Geldiniz!</h3>
+    <!-- Oyuncu Paneli ve Oyun Seçimi -->
+    <div id="game-section" class="card" style="display:none;">
+        <h3>Arcade Salonu</h3>
         <p>Bakiyeniz: <span id="tokens">0</span> Jeton</p>
-        <button onclick="playGame()">1 Jeton Harca & Başlat</button><br>
+        
+        <div class="game-grid">
+            <div class="game-item">
+                <span>Retro Tank Savaşı</span>
+                <button onclick="playGame('Tank Savaşı')">Oyna (1 Jeton)</button>
+            </div>
+            <div class="game-item">
+                <span>Space Arcade</span>
+                <button onclick="playGame('Space Arcade')">Oyna (1 Jeton)</button>
+            </div>
+        </div>
+
+        <br>
         <button onclick="signOut()" style="background-color: #555;">Çıkış Yap</button>
+    </div>
+
+    <!-- Admin Paneli (Sadece yetkili hesaplar için görünebilir) -->
+    <div id="admin-panel" class="card">
+        <h3 style="color: #ffd700;">Admin Kontrol Paneli</h3>
+        <p>Sistem ve Jeton Yönetimi</p>
+        <input type="text" id="target-user" placeholder="Kullanıcı UUID veya E-posta"><br>
+        <input type="number" id="add-token-count" placeholder="Eklenecek Jeton Miktar"><br>
+        <button onclick="adminAddTokens()" style="background-color: #ffd700; color: #121214;">Jeton Ekle</button>
     </div>
 
     <script>
         // --- SUPABASE BİLGİLERİNİZ ---
-        // Project Settings > API kısmından aldığınız değerleri buraya ekleyin:
         const SUPABASE_URL = 'https://BURAYA_PROJE_URL_YAZILACAK.supabase.co';
         const SUPABASE_ANON_KEY = 'BURAYA_PUBLISHABLE_KEY_YAZILACAK';
 
-        // Supabase İstemcisini Başlatma
         const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Sayfa açıldığında açık oturum var mı kontrol et
         window.onload = async function() {
             const { data: { session } } = await _supabase.auth.getSession();
             if (session) {
-                showGameSection(session.user);
+                checkUserAndSetup(session.user);
             }
         };
 
-        // Kayıt Ol
         async function signUp() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-
-            const { data, error } = await _supabase.auth.signUp({ email, password });
-            if (error) {
-                alert("Kayıt hatası: " + error.message);
-            } else {
-                alert("Kayıt başarılı! E-posta doğrulaması gerekiyorsa onaylayıp giriş yapabilirsiniz.");
-            }
+            const { error } = await _supabase.auth.signUp({ email, password });
+            if (error) alert("Kayıt hatası: " + error.message);
+            else alert("Kayıt başarılı! Giriş yapabilirsiniz.");
         }
 
-        // Giriş Yap
         async function signIn() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-
             const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-            if (error) {
-                alert("Giriş hatası: " + error.message);
-            } else {
-                showGameSection(data.user);
-            }
+            if (error) alert("Giriş hatası: " + error.message);
+            else checkUserAndSetup(data.user);
         }
 
-        // Çıkış Yap
         async function signOut() {
             await _supabase.auth.signOut();
             document.getElementById('auth-section').style.display = 'inline-block';
             document.getElementById('game-section').style.display = 'none';
+            document.getElementById('admin-panel').style.display = 'none';
         }
 
-        // Oyun Paneline Geçiş ve Jetonları Getirme
-        async function showGameSection(user) {
+        async function checkUserAndSetup(user) {
             document.getElementById('auth-section').style.display = 'none';
             document.getElementById('game-section').style.display = 'inline-block';
 
-            let { data, error } = await _supabase
-                .from('profiles')
-                .select('tokens')
-                .eq('id', user.id)
-                .single();
-
+            // Jetonları Çek
+            let { data } = await _supabase.from('profiles').select('tokens').eq('id', user.id).single();
             if (data) {
                 document.getElementById('tokens').innerText = data.tokens;
             } else {
-                // Eğer trigger çalışmadıysa yedek olarak manuel profil oluşturma
                 await _supabase.from('profiles').insert([{ id: user.id, tokens: 3 }]);
                 document.getElementById('tokens').innerText = 3;
             }
+
+            // Örnek Admin Kontrolü (Kendi e-posta adresini buraya yazarak admin paneline erişebilirsin)
+            if (user.email === "senin-admin-epostan@gmail.com") {
+                document.getElementById('admin-panel').style.display = 'inline-block';
+            }
         }
 
-        // Jeton Harcama Fonksiyonu
-        async function playGame() {
+        async function playGame(gameName) {
             const { data: { user } } = await _supabase.auth.getUser();
             let { data } = await _supabase.from('profiles').select('tokens').eq('id', user.id).single();
             
@@ -191,10 +220,18 @@
                 let yeniJeton = data.tokens - 1;
                 await _supabase.from('profiles').update({ tokens: yeniJeton }).eq('id', user.id);
                 document.getElementById('tokens').innerText = yeniJeton;
-                alert("1 Jeton harcandı! Oyuna yönlendiriliyorsunuz...");
+                alert(`1 Jeton harcandı! ${gameName} başlatılıyor... (EmulatorJS entegrasyonu buraya gelecek)`);
             } else {
-                alert("Yetersiz jeton!");
+                alert("Yetersiz jeton! Lütfen admin ile iletişime geçin.");
             }
+        }
+
+        // Admin Jeton Yükleme Fonksiyonu
+        async function adminAddTokens() {
+            const targetEmail = document.getElementById('target-user').value;
+            const count = parseInt(document.getElementById('add-token-count').value);
+            
+            alert(`Admin özelliği: ${targetEmail} adresine ${count} jeton ekleme isteği simüle edildi.`);
         }
     </script>
 </body>
