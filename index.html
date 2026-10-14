@@ -233,6 +233,17 @@
             
             alert(`Admin özelliği: ${targetEmail} adresine ${count} jeton ekleme isteği simüle edildi.`);
         }
+        // Admin kontrolünü veritabanından yapalım
+let { data: profileData } = await _supabase.from('profiles').select('tokens, is_admin').eq('id', user.id).single();
+
+if (profileData) {
+    document.getElementById('tokens').innerText = profileData.tokens;
+
+    // Eğer veritabanında is_admin true ise paneli aç
+    if (profileData.is_admin) {
+        document.getElementById('admin-panel').style.display = 'inline-block';
+    }
+}
         <!-- Oyuncu Paneli ve Oyun Seçimi -->
 <div id="game-section" class="card" style="display:none;">
     <h3>Arcade Salonu</h3>
