@@ -233,6 +233,30 @@
             
             alert(`Admin özelliği: ${targetEmail} adresine ${count} jeton ekleme isteği simüle edildi.`);
         }
+        <!-- Oyuncu Paneli ve Oyun Seçimi -->
+<div id="game-section" class="card" style="display:none;">
+    <h3>Arcade Salonu</h3>
+    <p>Bakiyeniz: <span id="tokens">0</span> Jeton</p>
+    
+    <div id="game-menu">
+        <div class="game-grid">
+            <div class="game-item">
+                <span>Retro Arcade Oyunu</span>
+                <button onclick="playGame('Retro Game')">1 Jeton Harca & Başlat</button>
+            </div>
+        </div>
+        <br>
+        <button onclick="signOut()" style="background-color: #555;">Çıkış Yap</button>
+    </div>
+
+    <!-- EmulatorJS Oyun Alanı (Başlangıçta gizli) -->
+    <div id="emulator-container" style="display:none; margin-top: 15px;">
+        <div style="width:100%; height:400px; max-width:600px; background:#000; margin:0 auto; position:relative;" id="game">
+            <!-- EmulatorJS buraya yüklenecek -->
+        </div>
+        <button onclick="exitGame()" style="margin-top: 10px; background-color: #ff4444;">Oyundan Çık / Menüye Dön</button>
+    </div>
+</div>
     </script>
 </body>
 </html>
