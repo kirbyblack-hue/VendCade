@@ -113,21 +113,16 @@
     </div>
 
     <script>
-        // --- BURAYI KENDİ BİLGİLERİNİZLE DOLDURUN ---
-        const SUPABASE_URL = 'https://frqywbztxxdzihrznxbh.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZycXl3Ynp0eHhkemlocnpueGJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5ODU1MzMsImV4cCI6MjEwNzU2MTUzM30.0Z856vVB6IkFuNXDXtbpRr6JJzhHtPjKQQiMgjx0k-c'; // Kendi publishable key'inizi buraya yapıştırın
+        // --- SUPABASE BİLGİLERİNİZ ---
+        // Project Settings > API kısmından aldığınız değerleri buraya ekleyin:
+        const SUPABASE_URL = 'https://BURAYA_PROJE_URL_YAZILACAK.supabase.co';
+        const SUPABASE_ANON_KEY = 'BURAYA_PUBLISHABLE_KEY_YAZILACAK';
 
-        // Supabase İstemcisini Güvenli Şekilde Başlatma
-        let _supabase;
-        try {
-            _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } catch (e) {
-            console.error("Supabase başlatılamadı:", e);
-        }
+        // Supabase İstemcisini Başlatma
+        const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Sayfa açıldığında oturumu kontrol et
+        // Sayfa açıldığında açık oturum var mı kontrol et
         window.onload = async function() {
-            if (!_supabase) return;
             const { data: { session } } = await _supabase.auth.getSession();
             if (session) {
                 showGameSection(session.user);
@@ -143,7 +138,7 @@
             if (error) {
                 alert("Kayıt hatası: " + error.message);
             } else {
-                alert("Kayıt başarılı! Şimdi giriş yapabilirsiniz.");
+                alert("Kayıt başarılı! E-posta doğrulaması gerekiyorsa onaylayıp giriş yapabilirsiniz.");
             }
         }
 
@@ -167,7 +162,7 @@
             document.getElementById('game-section').style.display = 'none';
         }
 
-        // Oyun Ekranı ve Jetonları Getir
+        // Oyun Paneline Geçiş ve Jetonları Getirme
         async function showGameSection(user) {
             document.getElementById('auth-section').style.display = 'none';
             document.getElementById('game-section').style.display = 'inline-block';
@@ -181,17 +176,18 @@
             if (data) {
                 document.getElementById('tokens').innerText = data.tokens;
             } else {
+                // Eğer trigger çalışmadıysa yedek olarak manuel profil oluşturma
                 await _supabase.from('profiles').insert([{ id: user.id, tokens: 3 }]);
                 document.getElementById('tokens').innerText = 3;
             }
         }
 
-        // Jeton Harcama
+        // Jeton Harcama Fonksiyonu
         async function playGame() {
             const { data: { user } } = await _supabase.auth.getUser();
             let { data } = await _supabase.from('profiles').select('tokens').eq('id', user.id).single();
             
-            if (data.tokens > 0) {
+            if (data && data.tokens > 0) {
                 let yeniJeton = data.tokens - 1;
                 await _supabase.from('profiles').update({ tokens: yeniJeton }).eq('id', user.id);
                 document.getElementById('tokens').innerText = yeniJeton;
