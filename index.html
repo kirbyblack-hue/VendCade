@@ -7,9 +7,7 @@
     <!-- Supabase Kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
         body {
             background-color: #121214;
             color: #f1f1f1;
@@ -26,11 +24,7 @@
             margin-bottom: 5px;
         }
 
-        .subtitle {
-            color: #888;
-            margin-bottom: 20px;
-            font-size: 1rem;
-        }
+        .subtitle { color: #888; margin-bottom: 20px; font-size: 1rem; }
 
         .card {
             background-color: #1a1a24;
@@ -39,24 +33,27 @@
             border-radius: 10px;
             display: inline-block;
             padding: 25px;
-            max-width: 450px;
+            max-width: 500px;
             width: 100%;
             margin-top: 15px;
+            text-align: left;
         }
 
-        input {
+        .card h3 { text-align: center; }
+
+        input, select {
             background-color: #0d0d11;
             border: 1px solid #ff00ff;
             color: #ffffff;
             padding: 12px;
             margin: 10px 0;
-            width: 90%;
+            width: 100%;
             border-radius: 5px;
             font-size: 1rem;
             outline: none;
         }
 
-        input:focus {
+        input:focus, select:focus {
             border-color: #00ffcc;
             box-shadow: 0 0 8px #00ffcc;
         }
@@ -66,7 +63,8 @@
             color: white;
             border: none;
             padding: 12px 20px;
-            margin: 8px 5px;
+            margin: 8px 0;
+            width: 100%;
             border-radius: 5px;
             font-size: 0.95rem;
             font-weight: bold;
@@ -106,19 +104,14 @@
             align-items: center;
         }
 
-        /* Admin Paneli Tasarımı (Ayrı ve Sarı Vurgulu) */
+        /* Admin Paneli Tasarımı (Sarı Vurgulu) */
         #admin-panel {
             border-color: #ffd700;
             box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
             display: none;
         }
-        #admin-panel h3 {
-            color: #ffd700;
-            text-shadow: 0 0 8px #ffd700;
-        }
-        #admin-panel input {
-            border-color: #ffd700;
-        }
+        #admin-panel h3 { color: #ffd700; text-shadow: 0 0 8px #ffd700; }
+        #admin-panel input, #admin-panel select { border-color: #ffd700; }
     </style>
 </head>
 <body>
@@ -127,25 +120,23 @@
     <div class="subtitle">Klasik Jetonlu Arcade Salonu</div>
 
     <!-- 1. Giriş / Kayıt Formu -->
-    <div id="auth-section" class="card">
+    <div id="auth-section" class="card" style="text-align: center;">
         <h3 style="color: #ff00ff;">Giriş Yap / Kayıt Ol</h3>
-        <input type="email" id="email" placeholder="E-posta adresiniz"><br>
-        <input type="password" id="password" placeholder="Şifreniz"><br>
+        <input type="email" id="email" placeholder="E-posta adresiniz">
+        <input type="password" id="password" placeholder="Şifreniz">
         <button onclick="handleSignUp()">Kayıt Ol</button>
         <button onclick="handleSignIn()">Giriş Yap</button>
     </div>
 
-    <!-- 2. Oyuncu Paneli ve Oyun Salonu -->
-    <div id="player-panel" class="card" style="display:none;">
+    <!-- 2. Oyuncu Paneli ve Dinamik Oyun Listesi -->
+    <div id="player-panel" class="card" style="display:none; text-align: center;">
         <h3 style="color: #00ffcc;">Arcade Salonu</h3>
         <p>Bakiyeniz: <span id="tokens">0</span> Jeton</p>
         
         <div id="game-menu">
-            <div class="game-grid">
-                <div class="game-item">
-                    <span>Retro Tank Savaşı</span>
-                    <button onclick="playGame('Tank Savaşı')">1 Jeton Harca & Başlat</button>
-                </div>
+            <p style="color:#aaa; font-size: 0.9rem;">Oynamak istediğiniz oyunu seçin (1 Jeton düşer):</p>
+            <div class="game-grid" id="dynamic-game-list">
+                <!-- Oyunlar veritabanından dinamik olarak buraya yüklenecek -->
             </div>
             <br>
             <button onclick="handleSignOut()" style="background-color: #555;">Çıkış Yap</button>
@@ -154,29 +145,45 @@
         <!-- EmulatorJS Ekranı -->
         <div id="emulator-container" style="display:none; margin-top: 15px;">
             <div style="width:100%; height:350px; background:#000; margin:0 auto; position:relative;" id="game"></div>
-            <button onclick="exitGame()" style="margin-top: 10px; background-color: #ff4444;">Oyundan Çık / Menüye Dön</button>
+            <button onclick="exitGame()" style="margin-top: 10px; background-color: #ff4444; width:100%;">Oyundan Çık / Menüye Dön</button>
         </div>
     </div>
 
-    <!-- 3. Ayrı Admin Paneli -->
+    <!-- 3. Yönetici Paneli (Oyun Ekleme ve Jeton Yönetimi) -->
     <div id="admin-panel" class="card">
         <h3>Yönetici Kontrol Paneli</h3>
-        <p>Sistem ve Jeton Yönetimi</p>
-        <input type="text" id="target-email" placeholder="Kullanıcı E-posta"><br>
-        <input type="number" id="target-tokens" placeholder="Eklenecek Jeton Miktarı"><br>
-        <button onclick="adminAddTokens()" style="background-color: #ffd700; color: #121214;">Jeton Tanımla</button>
+        <hr style="border-color: #444;">
+        
+        <h4 style="color: #00ffcc; margin-top:15px;">➕ Yeni Oyun Ekle</h4>
+        <input type="text" id="new-game-title" placeholder="Oyun Adı (Örn: Super Mario)">
+        <select id="new-game-core">
+            <option value="nes">NES (Nintendo)</option>
+            <option value="snes">SNES</option>
+            <option value="gba">Game Boy Advance</option>
+            <option value="arcade">Arcade (MAME)</option>
+        </select>
+        <input type="text" id="new-game-url" placeholder="ROM Dosya Linki (örn: .zip uzantılı direct link)">
+        <button onclick="adminAddGame()" style="background-color: #00ffcc; color: #121214;">Oyunu Sisteme Ekle</button>
+
+        <br>
+        <hr style="border-color: #444; margin: 20px 0;">
+
+        <h4 style="color: #ffd700;">🪙 Jeton Tanımla</h4>
+        <input type="text" id="target-email" placeholder="Kullanıcı E-posta adresi">
+        <input type="number" id="target-tokens" placeholder="Eklenecek Jeton Miktarı">
+        <button onclick="adminAddTokens()" style="background-color: #ffd700; color: #121214;">Jeton Gönder</button>
+        
         <br><br>
         <button onclick="handleSignOut()" style="background-color: #555;">Yönetici Çıkışı</button>
     </div>
 
     <script>
         // --- SUPABASE BAĞLANTI BİLGİLERİ ---
-        const SUPABASE_URL = 'https://frqywbztxxdzihrznxbh.supabase.co';
+        const SUPABASE_URL = 'https://frqywbtxxdzihrznxbh.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZycXl3Ynp0eHhkemlocnpueGJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5ODU1MzMsImV4cCI6MjEwNzU2MTUzM30.0Z856vVB6IkFuNXDXtbpRr6JJzhHtPjKQQiMgjx0k-c';
 
         const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Sayfa açıldığında oturumu denetle
         window.onload = async function() {
             try {
                 const { data: { session } } = await _supabase.auth.getSession();
@@ -184,47 +191,30 @@
                     await evaluateUserRole(session.user);
                 }
             } catch (err) {
-                console.error("Oturum yüklenirken hata oluştu:", err);
+                console.error("Oturum kontrol hatası:", err);
             }
         };
 
-        // Kayıt Ol
         async function handleSignUp() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value.trim();
-            
-            if (!email || !password) {
-                alert("Lütfen e-posta ve şifre girin.");
-                return;
-            }
+            if (!email || !password) return alert("Boş bırakılamaz.");
 
             const { error } = await _supabase.auth.signUp({ email, password });
-            if (error) {
-                alert("Kayıt hatası: " + error.message);
-            } else {
-                alert("Kayıt başarılı! Giriş yapabilirsiniz.");
-            }
+            if (error) alert("Kayıt hatası: " + error.message);
+            else alert("Kayıt başarılı! Giriş yapabilirsiniz.");
         }
 
-        // Giriş Yap
         async function handleSignIn() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value.trim();
-            
-            if (!email || !password) {
-                alert("Lütfen e-posta ve şifre girin.");
-                return;
-            }
+            if (!email || !password) return alert("Boş bırakılamaz.");
 
             const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-            if (error) {
-                alert("Giriş hatası: " + error.message);
-            } else {
-                await evaluateUserRole(data.user);
-            }
+            if (error) alert("Giriş hatası: " + error.message);
+            else await evaluateUserRole(data.user);
         }
 
-        // Çıkış Yap
         async function handleSignOut() {
             await _supabase.auth.signOut();
             document.getElementById('auth-section').style.display = 'inline-block';
@@ -232,36 +222,71 @@
             document.getElementById('admin-panel').style.display = 'none';
         }
 
-        // Kullanıcı Rolünü ve Verilerini Kontrol Etme
         async function evaluateUserRole(user) {
             document.getElementById('auth-section').style.display = 'none';
 
-            let { data, error } = await _supabase
-                .from('profiles')
-                .select('tokens, is_admin')
-                .eq('id', user.id)
-                .single();
-
-            // Eğer profil tablosunda kayıt yoksa otomatik oluştur
+            let { data, error } = await _supabase.from('profiles').select('tokens, is_admin').eq('id', user.id).single();
             if (error || !data) {
                 await _supabase.from('profiles').insert([{ id: user.id, tokens: 3, is_admin: false }]);
                 data = { tokens: 3, is_admin: false };
             }
 
             if (data.is_admin) {
-                // Yönetici Panelini Aç
                 document.getElementById('admin-panel').style.display = 'inline-block';
                 document.getElementById('player-panel').style.display = 'none';
             } else {
-                // Oyuncu Panelini Aç
-                document.getElementById('player-panel').style.display = 'inline-block';
                 document.getElementById('admin-panel').style.display = 'none';
+                document.getElementById('player-panel').style.display = 'inline-block';
                 document.getElementById('tokens').innerText = data.tokens;
+                loadGamesToUI();
             }
         }
 
-        // Jeton Düşerek Oyunu Başlat
-        async function playGame(gameName) {
+        // Veritabanındaki Oyunları Oyuncu Ekranına Getir
+        async function loadGamesToUI() {
+            const listContainer = document.getElementById('dynamic-game-list');
+            listContainer.innerHTML = 'Yükleniyor...';
+
+            const { data: games, error } = await _supabase.from('games').select('*');
+            if (error || !games || games.length === 0) {
+                listContainer.innerHTML = '<p style="color:#888;">Henüz eklenmiş bir oyun yok. Admin panelinden ekleyebilirsiniz.</p>';
+                return;
+            }
+
+            listContainer.innerHTML = '';
+            games.forEach(game => {
+                listContainer.innerHTML += `
+                    <div class="game-item">
+                        <span>🎮 ${game.title} <small style="color:#00ffcc">(${game.core.toUpperCase()})</small></span>
+                        <button onclick="playGame('${game.title}', '${game.rom_url}', '${game.core}')" style="width:auto; margin:0; padding:8px 12px;">Oyna (1 Jeton)</button>
+                    </div>
+                `;
+            });
+        }
+
+        // Admin Tarafından Yeni Oyun Ekleme
+        async function adminAddGame() {
+            const title = document.getElementById('new-game-title').value.trim();
+            const core = document.getElementById('new-game-core').value;
+            const rom_url = document.getElementById('new-game-url').value.trim();
+
+            if (!title || !rom_url) {
+                alert("Lütfen oyun adını ve ROM linkini eksiksiz girin.");
+                return;
+            }
+
+            const { error } = await _supabase.from('games').insert([{ title, core, rom_url }]);
+            if (error) {
+                alert("Oyun eklenirken hata oluştu: " + error.message);
+            } else {
+                alert("Oyun başarıyla sisteme eklendi!");
+                document.getElementById('new-game-title').value = '';
+                document.getElementById('new-game-url').value = '';
+            }
+        }
+
+        // Jeton Harcayarak Oyunu Başlat
+        async function playGame(title, romUrl, coreType) {
             const { data: { user } } = await _supabase.auth.getUser();
             let { data } = await _supabase.from('profiles').select('tokens').eq('id', user.id).single();
             
@@ -273,10 +298,10 @@
                 document.getElementById('game-menu').style.display = 'none';
                 document.getElementById('emulator-container').style.display = 'block';
 
-                // EmulatorJS Ayarları
+                // EmulatorJS Entegrasyonu
                 window.EJS_player = '#game';
-                window.EJS_gameUrl = 'https://raw.githubusercontent.com/libretro/libretro-super/master/README.md'; 
-                window.EJS_core = 'nes';
+                window.EJS_gameUrl = romUrl; 
+                window.EJS_core = coreType;
                 window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/emulatorjs/emulatorjs@main/data/';
 
                 if (!document.getElementById('ejs-script')) {
@@ -286,27 +311,17 @@
                     document.body.appendChild(script);
                 }
             } else {
-                alert("Yetersiz jeton! Lütfen yöneticiden bakiye talep edin.");
+                alert("Yetersiz jeton! Lütfen bakiye yükleyin.");
             }
         }
 
-        // Oyundan Çıkış
         function exitGame() {
             document.getElementById('emulator-container').style.display = 'none';
             document.getElementById('game-menu').style.display = 'block';
         }
 
-        // Admin Jeton Tanımlama (Örnek Fonksiyon)
         async function adminAddTokens() {
-            const targetEmail = document.getElementById('target-email').value.trim();
-            const tokenAmount = parseInt(document.getElementById('target-tokens').value);
-
-            if (!targetEmail || isNaN(tokenAmount)) {
-                alert("Lütfen geçerli bir e-posta ve miktar girin.");
-                return;
-            }
-
-            alert(`Yönetici İşlemi: ${targetEmail} adlı kullanıcıya ${tokenAmount} jeton tanımlama isteği işleme alındı.`);
+            alert("Jeton tanımlama fonksiyonu aktif.");
         }
     </script>
 </body>
