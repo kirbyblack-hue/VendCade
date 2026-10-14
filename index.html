@@ -302,7 +302,7 @@
             }
         }
 
-        async function playGame(title, romUrl, coreType) {
+        aasync function playGame(title, romUrl, coreType) {
     const { data: { user } } = await _supabase.auth.getUser();
     let { data } = await _supabase.from('profiles').select('tokens').eq('id', user.id).single();
     
@@ -316,26 +316,40 @@
 
         const dipSwitchValue = document.getElementById('dip-switch-toggle') ? document.getElementById('dip-switch-toggle').value === 'true' : false;
 
-        // Kararlı NPM CDN Yolu (404 ve CORS hatalarını çözer)
+        // EmulatorJS Global Ayarları
         window.EJS_player = '#game';
         window.EJS_gameUrl = romUrl; 
         window.EJS_core = coreType;
         window.EJS_pathtodata = 'https://cdn.jsdelivr.net/npm/emulatorjs@latest/data/';
         window.EJS_settings = { dipSwitches: dipSwitchValue };
 
-        if (!document.getElementById('ejs-script')) {
-            const script = document.createElement('script');
-            script.id = 'ejs-script';
-            script.src = 'https://cdn.jsdelivr.net/npm/emulatorjs@latest/data/loader.js';
-            document.body.appendChild(script);
-        } else {
-            location.reload();
+        // Eğer script daha önceden eklendiyse temizleyip yeniden tetikleyelim ki siyah ekranda kalmasın
+        const oldScript = document.getElementById('ejs-script');
+        if (oldScript) {
+            oldScript.remove();
+            // Emulator div alanını sıfırla
+            document.getElementById('game').innerHTML = '';
         }
+
+        const script = document.createElement('script');
+        script.id = 'ejs-script';
+        script.src = 'https://cdn.jsdelivr.net/npm/emulatorjs@latest/data/loader.js';
+        document.body.appendChild(script);
+
     } else {
         alert("Yetersiz jeton!");
     }
 }
 
+function exitGame() {
+    // Oyundan çıkarken emülatör alanını tamamen temizle
+    document.getElementById('game').innerHTML = '';
+    const oldScript = document.getElementById('ejs-script');
+    if (oldScript) oldScript.remove();
+
+    document.getElementById('emulator-container').style.display = 'none';
+    document.getElementById('game-menu').style.display = 'block';
+}
         function exitGame() {
             document.getElementById('emulator-container').style.display = 'none';
             document.getElementById('game-menu').style.display = 'block';
