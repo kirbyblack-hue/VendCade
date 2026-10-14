@@ -2,18 +2,109 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Online Arcade - Giriş</title>
-    <!-- Supabase JavaScript Kütüphanesi -->
+    <title>VendCade - Retro Arcade Salonu</title>
+    <!-- Supabase Kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Genel Arka Plan ve Retro Font */
+        body {
+            background-color: #121214;
+            color: #f1f1f1;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            margin: 0;
+            padding: 50px;
+        }
+
+        h1 {
+            color: #00ffcc;
+            text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        h3 {
+            color: #ff00ff;
+            text-shadow: 0 0 8px #ff00ff;
+        }
+
+        /* Giriş ve Oyun Kutuları (Konteyner) */
+        #auth-section, #game-section {
+            background-color: #1a1a24;
+            border: 2px solid #00ffcc;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+            border-radius: 10px;
+            display: inline-block;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        /* Input Alanları */
+        input {
+            background-color: #0d0d11;
+            border: 1px solid #ff00ff;
+            color: #ffffff;
+            padding: 12px;
+            margin: 10px 0;
+            width: 85%;
+            border-radius: 5px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #00ffcc;
+            box-shadow: 0 0 8px #00ffcc;
+        }
+
+        /* Butonlar */
+        button {
+            background-color: #ff00ff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            margin: 10px 5px;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+            transition: 0.2s ease-in-out;
+        }
+
+        button:hover {
+            background-color: #00ffcc;
+            color: #121214;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+
+        /* Jeton Metni */
+        #tokens {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-shadow: 0 0 5px #ffd700;
+        }
+    </style>
 </head>
 <body>
-    <h1>Retro Arcade Salonu</h1>
+    <h1>VENDCADE</h1>
+    <div class="subtitle">Klasik Jetonlu Arcade Deneyimi</div>
 
     <!-- Giriş / Kayıt Formu -->
     <div id="auth-section">
-        <h3>Giriş Yap veya Kayıt Ol</h3>
-        <input type="email" id="email" placeholder="E-posta adresiniz"><br><br>
-        <input type="password" id="password" placeholder="Şifreniz"><br><br>
+        <h3>Giriş Yap / Kayıt Ol</h3>
+        <input type="email" id="email" placeholder="E-posta adresiniz"><br>
+        <input type="password" id="password" placeholder="Şifreniz"><br>
         <button onclick="signUp()">Kayıt Ol</button>
         <button onclick="signIn()">Giriş Yap</button>
     </div>
@@ -22,18 +113,18 @@
     <div id="game-section" style="display:none;">
         <h3>Hoş Geldiniz!</h3>
         <p>Bakiyeniz: <span id="tokens">0</span> Jeton</p>
-        <button onclick="playGame()">1 Jeton Harca ve Oyuna Başla</button><br><br>
-        <button onclick="signOut()">Çıkış Yap</button>
+        <button onclick="playGame()">1 Jeton Harca & Başlat</button><br>
+        <button onclick="signOut()" style="background-color: #555;">Çıkış Yap</button>
     </div>
 
     <script>
-        // Supabase Bağlantı Bilgileriniz (Kendi bilgilerinizle değiştirin)
+        // Supabase Bilgileriniz (Kendi URL ve Anon Key değerlerinizi buraya yazın)
         const SUPABASE_URL = 'SENIN_SUPABASE_URL_ADRESIN';
         const SUPABASE_ANON_KEY = 'SENIN_SUPABASE_ANON_KEY_DEGERIN';
 
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Sayfa yüklendiğinde kullanıcı oturumunu kontrol et
+        // Sayfa açıldığında oturumu kontrol et
         window.onload = async function() {
             const { data: { session } } = await _supabase.auth.getSession();
             if (session) {
@@ -41,7 +132,7 @@
             }
         };
 
-        // Kayıt Olma Fonksiyonu
+        // Kayıt Ol
         async function signUp() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -50,11 +141,11 @@
             if (error) {
                 alert("Kayıt hatası: " + error.message);
             } else {
-                alert("Kayıt başarılı! E-postanızı kontrol edin veya giriş yapın.");
+                alert("Kayıt başarılı! Şimdi giriş yapabilirsiniz.");
             }
         }
 
-        // Giriş Yapma Fonksiyonu
+        // Giriş Yap
         async function signIn() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -67,19 +158,18 @@
             }
         }
 
-        // Çıkış Yapma Fonksiyonu
+        // Çıkış Yap
         async function signOut() {
             await _supabase.auth.signOut();
-            document.getElementById('auth-section').style.display = 'block';
+            document.getElementById('auth-section').style.display = 'inline-block';
             document.getElementById('game-section').style.display = 'none';
         }
 
-        // Oyun Ekranını Gösterme ve Jetonları Çekme
+        // Oyun Ekranı ve Jetonları Getir
         async function showGameSection(user) {
             document.getElementById('auth-section').style.display = 'none';
-            document.getElementById('game-section').style.display = 'block';
+            document.getElementById('game-section').style.display = 'inline-block';
 
-            // Kullanıcının veritabanındaki jeton miktarını çekelim
             let { data, error } = await _supabase
                 .from('profiles')
                 .select('tokens')
@@ -89,29 +179,27 @@
             if (data) {
                 document.getElementById('tokens').innerText = data.tokens;
             } else {
-                // Eğer kullanıcı ilk defa giriyorsa ve profili yoksa 3 jeton hediye verelim
+                // İlk defa giriyorsa 3 jeton hediye ver
                 await _supabase.from('profiles').insert([{ id: user.id, tokens: 3 }]);
                 document.getElementById('tokens').innerText = 3;
             }
         }
 
-        // Oyuna Başlama / Jeton Düşme Simülasyonu
+        // Jeton Harcama ve Oyuna Başlama
         async function playGame() {
             const { data: { user } } = await _supabase.auth.getUser();
             
-            // Mevcut jetonları al
             let { data } = await _supabase.from('profiles').select('tokens').eq('id', user.id).single();
             
             if (data.tokens > 0) {
                 let yeniJeton = data.tokens - 1;
-                // Veritabanında jetonu 1 azalt
                 await _supabase.from('profiles').update({ tokens: yeniJeton }).eq('id', user.id);
                 
                 document.getElementById('tokens').innerText = yeniJeton;
-                alert("Jeton harcandı! Emülatör başlatılıyor...");
-                // window.location.href = "game.html"; // Buraya emülatör sayfanızı yazabilirsiniz
+                alert("1 Jeton harcandı! Oyuna/Emülatöre yönlendiriliyorsunuz...");
+                // window.location.href = "game.html"; // Buraya emülatör sayfanızı bağlayabilirsiniz
             } else {
-                alert("Yetersiz jeton! Lütfen bakiye yükleyin.");
+                alert("Yetersiz jeton! Lütfen bekleyin.");
             }
         }
     </script>
