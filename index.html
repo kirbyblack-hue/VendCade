@@ -40,7 +40,7 @@
             border-radius: 10px;
             display: inline-block;
             padding: 25px;
-            max-width: 450px;
+            max-width: 500px;
             width: 100%;
             margin-top: 15px;
         }
@@ -132,34 +132,39 @@
         <h3>Arcade Salonu</h3>
         <p>Bakiyeniz: <span id="tokens">0</span> Jeton</p>
         
-        <div class="game-grid">
-            <div class="game-item">
-                <span>Retro Tank Savaşı</span>
-                <button onclick="playGame('Tank Savaşı')">Oyna (1 Jeton)</button>
+        <div id="game-menu">
+            <div class="game-grid">
+                <div class="game-item">
+                    <span>Retro Tank Oyunu</span>
+                    <button onclick="playGame('Tank Savaşı')">1 Jeton Harca & Başlat</button>
+                </div>
             </div>
-            <div class="game-item">
-                <span>Space Arcade</span>
-                <button onclick="playGame('Space Arcade')">Oyna (1 Jeton)</button>
-            </div>
+            <br>
+            <button onclick="signOut()" style="background-color: #555;">Çıkış Yap</button>
         </div>
 
-        <br>
-        <button onclick="signOut()" style="background-color: #555;">Çıkış Yap</button>
+        <!-- EmulatorJS Oyun Alanı (Başlangıçta gizli) -->
+        <div id="emulator-container" style="display:none; margin-top: 15px;">
+            <div style="width:100%; height:400px; background:#000; margin:0 auto; position:relative;" id="game">
+                <!-- EmulatorJS buraya yüklenecek -->
+            </div>
+            <button onclick="exitGame()" style="margin-top: 10px; background-color: #ff4444;">Oyundan Çık / Menüye Dön</button>
+        </div>
     </div>
 
-    <!-- Admin Paneli (Sadece yetkili hesaplar için görünebilir) -->
+    <!-- Admin Paneli (is_admin true olanlar için görünür) -->
     <div id="admin-panel" class="card">
         <h3 style="color: #ffd700;">Admin Kontrol Paneli</h3>
         <p>Sistem ve Jeton Yönetimi</p>
-        <input type="text" id="target-user" placeholder="c28f42e9-8eeb-4c9e-a577-d2a54bb7470b"><br>
-        <input type="number" id="add-token-count" placeholder="Eklenecek Jeton Miktar"><br>
+        <input type="text" id="target-user-email" placeholder="Kullanıcı E-posta adresi"><br>
+        <input type="number" id="add-token-count" placeholder="Eklenecek Jeton Miktarı"><br>
         <button onclick="adminAddTokens()" style="background-color: #ffd700; color: #121214;">Jeton Ekle</button>
     </div>
 
     <script>
-        // --- SUPABASE BİLGİLERİNİZ ---
-        const SUPABASE_URL = 'https://BURAYA_PROJE_URL_YAZILACAK.supabase.co';
-        const SUPABASE_ANON_KEY = 'BURAYA_PUBLISHABLE_KEY_YAZILACAK';
+        // --- SUPABASE BİLGİLERİN (Kendi gerçek değerlerini buraya yapıştır) ---
+        const SUPABASE_URL = 'https://frqywbtxxdzihrznxbh.supabase.co';
+        const SUPABASE_ANON_KEY = 'buraya_anon_key_degerini_yapistir';
 
         const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -197,18 +202,17 @@
             document.getElementById('auth-section').style.display = 'none';
             document.getElementById('game-section').style.display = 'inline-block';
 
-            // Jetonları Çek
-            let { data } = await _supabase.from('profiles').select('tokens').eq('id', user.id).single();
+            // Profili ve adminlik durumunu çek
+            let { data, error } = await _supabase.from('profiles').select('tokens, is_admin').eq('id', user.id).single();
+            
             if (data) {
                 document.getElementById('tokens').innerText = data.tokens;
+                if (data.is_admin) {
+                    document.getElementById('admin-panel').style.display = 'inline-block';
+                }
             } else {
-                await _supabase.from('profiles').insert([{ id: user.id, tokens: 3 }]);
+                await _supabase.from('profiles').insert([{ id: user.id, tokens: 3, is_admin: false }]);
                 document.getElementById('tokens').innerText = 3;
-            }
-
-            // Örnek Admin Kontrolü (Kendi e-posta adresini buraya yazarak admin paneline erişebilirsin)
-            if (user.email === "senin-admin-epostan@gmail.com") {
-                document.getElementById('admin-panel').style.display = 'inline-block';
             }
         }
 
@@ -220,54 +224,40 @@
                 let yeniJeton = data.tokens - 1;
                 await _supabase.from('profiles').update({ tokens: yeniJeton }).eq('id', user.id);
                 document.getElementById('tokens').innerText = yeniJeton;
-                alert(`1 Jeton harcandı! ${gameName} başlatılıyor... (EmulatorJS entegrasyonu buraya gelecek)`);
+                
+                // Menüyü gizle, emulator alanını aç
+                document.getElementById('game-menu').style.display = 'none';
+                document.getElementById('emulator-container').style.display = 'block';
+
+                // EmulatorJS Ayarları
+                window.EJS_player = '#game';
+                window.EJS_gameUrl = 'https://raw.githubusercontent.com/libretro/libretro-super/master/README.md'; // Örnek ROM linki
+                window.EJS_core = 'nes';
+                window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/emulatorjs/emulatorjs@main/data/';
+
+                if (!document.getElementById('ejs-script')) {
+                    const script = document.createElement('script');
+                    script.id = 'ejs-script';
+                    script.src = 'https://cdn.jsdelivr.net/gh/emulatorjs/emulatorjs@main/data/loader.js';
+                    document.body.appendChild(script);
+                }
             } else {
                 alert("Yetersiz jeton! Lütfen admin ile iletişime geçin.");
             }
         }
 
-        // Admin Jeton Yükleme Fonksiyonu
-        async function adminAddTokens() {
-            const targetEmail = document.getElementById('target-user').value;
-            const count = parseInt(document.getElementById('add-token-count').value);
-            
-            alert(`Admin özelliği: ${targetEmail} adresine ${count} jeton ekleme isteği simüle edildi.`);
+        function exitGame() {
+            document.getElementById('emulator-container').style.display = 'none';
+            document.getElementById('game-menu').style.display = 'block';
         }
-        // Admin kontrolünü veritabanından yapalım
-let { data: profileData } = await _supabase.from('profiles').select('tokens, is_admin').eq('id', user.id).single();
 
-if (profileData) {
-    document.getElementById('tokens').innerText = profileData.tokens;
+        async function adminAddTokens() {
+            const targetEmail = document.getElementById('target-user-email').value;
+            const count = parseInt(document.getElementById('add-token-count').value);
 
-    // Eğer veritabanında is_admin true ise paneli aç
-    if (profileData.is_admin) {
-        document.getElementById('admin-panel').style.display = 'inline-block';
-    }
-}
-        <!-- Oyuncu Paneli ve Oyun Seçimi -->
-<div id="game-section" class="card" style="display:none;">
-    <h3>Arcade Salonu</h3>
-    <p>Bakiyeniz: <span id="tokens">0</span> Jeton</p>
-    
-    <div id="game-menu">
-        <div class="game-grid">
-            <div class="game-item">
-                <span>Retro Arcade Oyunu</span>
-                <button onclick="playGame('Retro Game')">1 Jeton Harca & Başlat</button>
-            </div>
-        </div>
-        <br>
-        <button onclick="signOut()" style="background-color: #555;">Çıkış Yap</button>
-    </div>
-
-    <!-- EmulatorJS Oyun Alanı (Başlangıçta gizli) -->
-    <div id="emulator-container" style="display:none; margin-top: 15px;">
-        <div style="width:100%; height:400px; max-width:600px; background:#000; margin:0 auto; position:relative;" id="game">
-            <!-- EmulatorJS buraya yüklenecek -->
-        </div>
-        <button onclick="exitGame()" style="margin-top: 10px; background-color: #ff4444;">Oyundan Çık / Menüye Dön</button>
-    </div>
-</div>
+            // Önce e-postadan kullanıcı ID'sini bulalım (auth.users yerine profiles tablosu veya RPC ile yapılabilir)
+            alert("Admin jeton ekleme fonksiyonu çağrıldı. (Supabase RPC ile detaylandırılabilir)");
+        }
     </script>
 </body>
 </html>
