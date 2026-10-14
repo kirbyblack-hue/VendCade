@@ -6,7 +6,6 @@
     <!-- Supabase Kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* Genel Arka Plan ve Retro Font */
         body {
             background-color: #121214;
             color: #f1f1f1;
@@ -34,7 +33,6 @@
             text-shadow: 0 0 8px #ff00ff;
         }
 
-        /* Giriş ve Oyun Kutuları (Konteyner) */
         #auth-section, #game-section {
             background-color: #1a1a24;
             border: 2px solid #00ffcc;
@@ -47,7 +45,6 @@
             margin-top: 20px;
         }
 
-        /* Input Alanları */
         input {
             background-color: #0d0d11;
             border: 1px solid #ff00ff;
@@ -65,7 +62,6 @@
             box-shadow: 0 0 8px #00ffcc;
         }
 
-        /* Butonlar */
         button {
             background-color: #ff00ff;
             color: white;
@@ -87,7 +83,6 @@
             box-shadow: 0 0 15px #00ffcc;
         }
 
-        /* Jeton Metni */
         #tokens {
             color: #ffd700;
             font-weight: bold;
@@ -109,7 +104,7 @@
         <button onclick="signIn()">Giriş Yap</button>
     </div>
 
-    <!-- Oyuncu Paneli (Giriş Yapınca Görünür) -->
+    <!-- Oyuncu Paneli -->
     <div id="game-section" style="display:none;">
         <h3>Hoş Geldiniz!</h3>
         <p>Bakiyeniz: <span id="tokens">0</span> Jeton</p>
@@ -118,14 +113,21 @@
     </div>
 
     <script>
-        // Supabase Bilgileriniz (Kendi URL ve Anon Key değerlerinizi buraya yazın)
-        const SUPABASE_URL = 'https://frqywbztxxdzihrznxbh.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_RHXtNp81SMhqwz9LcRZidw_A7ehJZEa';
+        // --- BURAYI KENDİ BİLGİLERİNİZLE DOLDURUN ---
+        const SUPABASE_URL = 'https://frqywbtxxdzihrznxbh.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_RHXtNp81SMhqwz9LcRZidw_A7ehJZEa'; // Kendi publishable key'inizi buraya yapıştırın
 
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Supabase İstemcisini Güvenli Şekilde Başlatma
+        let _supabase;
+        try {
+            _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (e) {
+            console.error("Supabase başlatılamadı:", e);
+        }
 
         // Sayfa açıldığında oturumu kontrol et
         window.onload = async function() {
+            if (!_supabase) return;
             const { data: { session } } = await _supabase.auth.getSession();
             if (session) {
                 showGameSection(session.user);
@@ -179,27 +181,23 @@
             if (data) {
                 document.getElementById('tokens').innerText = data.tokens;
             } else {
-                // İlk defa giriyorsa 3 jeton hediye ver
                 await _supabase.from('profiles').insert([{ id: user.id, tokens: 3 }]);
                 document.getElementById('tokens').innerText = 3;
             }
         }
 
-        // Jeton Harcama ve Oyuna Başlama
+        // Jeton Harcama
         async function playGame() {
             const { data: { user } } = await _supabase.auth.getUser();
-            
             let { data } = await _supabase.from('profiles').select('tokens').eq('id', user.id).single();
             
             if (data.tokens > 0) {
                 let yeniJeton = data.tokens - 1;
                 await _supabase.from('profiles').update({ tokens: yeniJeton }).eq('id', user.id);
-                
                 document.getElementById('tokens').innerText = yeniJeton;
-                alert("1 Jeton harcandı! Oyuna/Emülatöre yönlendiriliyorsunuz...");
-                // window.location.href = "game.html"; // Buraya emülatör sayfanızı bağlayabilirsiniz
+                alert("1 Jeton harcandı! Oyuna yönlendiriliyorsunuz...");
             } else {
-                alert("Yetersiz jeton! Lütfen bekleyin.");
+                alert("Yetersiz jeton!");
             }
         }
     </script>
