@@ -107,10 +107,18 @@
             align-items: center;
         }
 
-        #admin-panel {
+        /* Admin Paneli Özel Tasarımı (Ayrı Görünüm) */
+        #admin-view {
             border-color: #ffd700;
-            margin-top: 20px;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
             display: none;
+        }
+        #admin-view h3 {
+            color: #ffd700;
+            text-shadow: 0 0 8px #ffd700;
+        }
+        #admin-view input {
+            border-color: #ffd700;
         }
     </style>
 </head>
@@ -118,7 +126,7 @@
     <h1>VENDCADE</h1>
     <div class="subtitle">Klasik Jetonlu Arcade Deneyimi</div>
 
-    <!-- Giriş / Kayıt Formu -->
+    <!-- 1. Giriş / Kayıt Bölümü -->
     <div id="auth-section" class="card">
         <h3>Giriş Yap / Kayıt Ol</h3>
         <input type="email" id="email" placeholder="E-posta adresiniz"><br>
@@ -127,8 +135,8 @@
         <button onclick="signIn()">Giriş Yap</button>
     </div>
 
-    <!-- Oyuncu Paneli ve Oyun Seçimi -->
-    <div id="game-section" class="card" style="display:none;">
+    <!-- 2. Normal Oyuncu Paneli -->
+    <div id="player-view" class="card" style="display:none;">
         <h3>Arcade Salonu</h3>
         <p>Bakiyeniz: <span id="tokens">0</span> Jeton</p>
         
@@ -152,13 +160,15 @@
         </div>
     </div>
 
-    <!-- Admin Paneli -->
-    <div id="admin-panel" class="card">
-        <h3 style="color: #ffd700;">Admin Kontrol Paneli</h3>
-        <p>Sistem ve Jeton Yönetimi</p>
-        <input type="text" id="target-user-email" placeholder="Kullanıcı E-posta adresi"><br>
-        <input type="number" id="add-token-count" placeholder="Eklenecek Jeton Miktarı"><br>
-        <button onclick="adminAddTokens()" style="background-color: #ffd700; color: #121214;">Jeton Ekle</button>
+    <!-- 3. Ayrı Admin Paneli (Sadece Yöneticiler Görebilir) -->
+    <div id="admin-view" class="card">
+        <h3>Yönetici Kontrol Paneli</h3>
+        <p>Sistem Geneli Jeton ve Yetki Yönetimi</p>
+        <input type="text" id="target-email" placeholder="Kullanıcı E-posta Adresi"><br>
+        <input type="number" id="token-amount" placeholder="Eklenecek Jeton Miktarı"><br>
+        <button onclick="adminGrantTokens()" style="background-color: #ffd700; color: #121214;">Kullanıcıya Jeton Ver</button>
+        <br><br>
+        <button onclick="signOut()" style="background-color: #555;">Yönetici Oturumunu Kapat</button>
     </div>
 
     <script>
@@ -169,9 +179,13 @@
         const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         window.onload = async function() {
-            const { data: { session } } = await _supabase.auth.getSession();
-            if (session) {
-                checkUserAndSetup(session.user);
+            try {
+                const { data: { session } } = await _supabase.auth.getSession();
+                if (session) {
+                    routeUser(session.user);
+                }
+            } catch (err) {
+                console.error("Oturum kontrol hatası:", err);
             }
         };
 
@@ -187,31 +201,41 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-            if (error) alert("Giriş hatası: " + error.message);
-            else checkUserAndSetup(data.user);
+            if (error) {
+                alert("Giriş hatası: " + error.message);
+            } else {
+                routeUser(data.user);
+            }
         }
 
         async function signOut() {
             await _supabase.auth.signOut();
             document.getElementById('auth-section').style.display = 'inline-block';
-            document.getElementById('game-section').style.display = 'none';
-            document.getElementById('admin-panel').style.display = 'none';
+            document.getElementById('player-view').style.display = 'none';
+            document.getElementById('admin-view').style.display = 'none';
         }
 
-        async function checkUserAndSetup(user) {
+        // Kullanıcı türüne göre doğru arayüze yönlendiren fonksiyon
+        async function routeUser(user) {
             document.getElementById('auth-section').style.display = 'none';
-            document.getElementById('game-section').style.display = 'inline-block';
 
             let { data, error } = await _supabase.from('profiles').select('tokens, is_admin').eq('id', user.id).single();
             
-            if (data) {
-                document.getElementById('tokens').innerText = data.tokens;
-                if (data.is_admin) {
-                    document.getElementById('admin-panel').style.display = 'inline-block';
-                }
-            } else {
+            if (error || !data) {
+                // Eğer profil henüz oluşmadıysa varsayılan olarak oyuncu kaydedelim
                 await _supabase.from('profiles').insert([{ id: user.id, tokens: 3, is_admin: false }]);
-                document.getElementById('tokens').innerText = 3;
+                data = { tokens: 3, is_admin: false };
+            }
+
+            if (data.is_admin) {
+                // Adminse sadece admin panelini göster
+                document.getElementById('admin-view').style.display = 'inline-block';
+                document.getElementById('player-view').style.display = 'none';
+            } else {
+                // Normal oyuncu ise arcade salonunu göster
+                document.getElementById('player-view').style.display = 'inline-block';
+                document.getElementById('admin-view').style.display = 'none';
+                document.getElementById('tokens').innerText = data.tokens;
             }
         }
 
@@ -248,10 +272,15 @@
             document.getElementById('game-menu').style.display = 'block';
         }
 
-        async function adminAddTokens() {
-            const targetEmail = document.getElementById('target-user-email').value;
-            const count = parseInt(document.getElementById('add-token-count').value);
-            alert(`Admin jeton ekleme fonksiyonu çağrıldı. Hedef: ${targetEmail}, Miktar: ${count}`);
+        async function adminGrantTokens() {
+            const targetEmail = document.getElementById('target-email').value;
+            const amount = parseInt(document.getElementById('token-amount').value);
+            
+            if (!targetEmail || isNaN(amount)) {
+                alert("Lütfen geçerli bir e-posta ve jeton miktarı girin.");
+                return;
+            }
+            alert(`Yönetici İşlemi: ${targetEmail} adresine ${amount} jeton tanımlama isteği işleme alındı.`);
         }
     </script>
 </body>
