@@ -303,38 +303,38 @@
         }
 
         async function playGame(title, romUrl, coreType) {
-            const { data: { user } } = await _supabase.auth.getUser();
-            let { data } = await _supabase.from('profiles').select('tokens').eq('id', user.id).single();
-            
-            if (data && data.tokens > 0) {
-                let yeniJeton = data.tokens - 1;
-                await _supabase.from('profiles').update({ tokens: yeniJeton }).eq('id', user.id);
-                document.getElementById('tokens').innerText = yeniJeton;
-                
-                document.getElementById('game-menu').style.display = 'none';
-                document.getElementById('emulator-container').style.display = 'block';
+    const { data: { user } } = await _supabase.auth.getUser();
+    let { data } = await _supabase.from('profiles').select('tokens').eq('id', user.id).single();
+    
+    if (data && data.tokens > 0) {
+        let yeniJeton = data.tokens - 1;
+        await _supabase.from('profiles').update({ tokens: yeniJeton }).eq('id', user.id);
+        document.getElementById('tokens').innerText = yeniJeton;
+        
+        document.getElementById('game-menu').style.display = 'none';
+        document.getElementById('emulator-container').style.display = 'block';
 
-                const dipSwitchValue = document.getElementById('dip-switch-toggle') ? document.getElementById('dip-switch-toggle').value === 'true' : false;
+        const dipSwitchValue = document.getElementById('dip-switch-toggle') ? document.getElementById('dip-switch-toggle').value === 'true' : false;
 
-                // Kararlı EmulatorJS CDN Yolları
-                window.EJS_player = '#game';
-                window.EJS_gameUrl = romUrl; 
-                window.EJS_core = coreType;
-                window.EJS_pathtodata = 'https://cdn.jsdelivr.net/npm/emulatorjs@latest/data/';
-                window.EJS_settings = { dipSwitches: dipSwitchValue };
+        // Kararlı NPM CDN Yolu (404 ve CORS hatalarını çözer)
+        window.EJS_player = '#game';
+        window.EJS_gameUrl = romUrl; 
+        window.EJS_core = coreType;
+        window.EJS_pathtodata = 'https://cdn.jsdelivr.net/npm/emulatorjs@latest/data/';
+        window.EJS_settings = { dipSwitches: dipSwitchValue };
 
-                if (!document.getElementById('ejs-script')) {
-                    const script = document.createElement('script');
-                    script.id = 'ejs-script';
-                    script.src = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@master/data/loader.js';
-                    document.body.appendChild(script);
-                } else {
-                    location.reload();
-                }
-            } else {
-                alert("Yetersiz jeton!");
-            }
+        if (!document.getElementById('ejs-script')) {
+            const script = document.createElement('script');
+            script.id = 'ejs-script';
+            script.src = 'https://cdn.jsdelivr.net/npm/emulatorjs@latest/data/loader.js';
+            document.body.appendChild(script);
+        } else {
+            location.reload();
         }
+    } else {
+        alert("Yetersiz jeton!");
+    }
+}
 
         function exitGame() {
             document.getElementById('emulator-container').style.display = 'none';
