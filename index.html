@@ -33,7 +33,7 @@
             border-radius: 10px;
             display: inline-block;
             padding: 25px;
-            max-width: 500px;
+            max-width: 550px;
             width: 100%;
             margin-top: 15px;
             text-align: left;
@@ -51,6 +51,11 @@
             border-radius: 5px;
             font-size: 1rem;
             outline: none;
+        }
+
+        input[type="file"] {
+            border: 1px dashed #ff00ff;
+            cursor: pointer;
         }
 
         input:focus, select:focus {
@@ -135,35 +140,45 @@
         
         <div id="game-menu">
             <p style="color:#aaa; font-size: 0.9rem;">Oynamak istediğiniz oyunu seçin (1 Jeton düşer):</p>
-            <div class="game-grid" id="dynamic-game-list">
-                <!-- Oyunlar veritabanından dinamik olarak buraya yüklenecek -->
-            </div>
+            <div class="game-grid" id="dynamic-game-list"></div>
             <br>
             <button onclick="handleSignOut()" style="background-color: #555;">Çıkış Yap</button>
         </div>
 
         <!-- EmulatorJS Ekranı -->
         <div id="emulator-container" style="display:none; margin-top: 15px;">
-            <div style="width:100%; height:350px; background:#000; margin:0 auto; position:relative;" id="game"></div>
+            <div style="width:100%; height:400px; background:#000; margin:0 auto; position:relative;" id="game"></div>
             <button onclick="exitGame()" style="margin-top: 10px; background-color: #ff4444; width:100%;">Oyundan Çık / Menüye Dön</button>
         </div>
     </div>
 
-    <!-- 3. Yönetici Paneli (Oyun Ekleme ve Jeton Yönetimi) -->
+    <!-- 3. Yönetici Paneli (ROM Yükleme, DIP Switch ve Jeton Yönetimi) -->
     <div id="admin-panel" class="card">
         <h3>Yönetici Kontrol Paneli</h3>
         <hr style="border-color: #444;">
         
-        <h4 style="color: #00ffcc; margin-top:15px;">➕ Yeni Oyun Ekle</h4>
-        <input type="text" id="new-game-title" placeholder="Oyun Adı (Örn: Super Mario)">
+        <h4 style="color: #00ffcc; margin-top:15px;">📤 ROM Dosyası Yükle & Oyun Ekle</h4>
+        <input type="text" id="new-game-title" placeholder="Oyun Adı (Örn: Cadillacs and Dinosaurs)">
         <select id="new-game-core">
+            <option value="arcade">Arcade (MAME / FinalBurn)</option>
+            <option value="playchoice10">PlayChoice-10 (NES Arcade)</option>
             <option value="nes">NES (Nintendo)</option>
             <option value="snes">SNES</option>
             <option value="gba">Game Boy Advance</option>
-            <option value="arcade">Arcade (MAME)</option>
         </select>
-        <input type="text" id="new-game-url" placeholder="ROM Dosya Linki (örn: .zip uzantılı direct link)">
-        <button onclick="adminAddGame()" style="background-color: #00ffcc; color: #121214;">Oyunu Sisteme Ekle</button>
+        <label style="font-size: 0.85rem; color: #ffd700;">ROM Arşivi (.zip):</label>
+        <input type="file" id="rom-file-input" accept=".zip">
+        <button onclick="adminUploadAndAddGame()" style="background-color: #00ffcc; color: #121214;">Yükle ve Oyunu Ekle</button>
+
+        <br>
+        <hr style="border-color: #444; margin: 20px 0;">
+
+        <h4 style="color: #ffd700;">🎛️ Makine Arkası Switch (DIP Switch) Ayarları</h4>
+        <p style="font-size: 0.8rem; color: #aaa;">MAME ve arcade makineleri için donanım/zorluk anahtarlarını açar.</p>
+        <select id="dip-switch-toggle">
+            <option value="false">DIP Switch Menüsü: Kapalı (Normal Mod)</option>
+            <option value="true">DIP Switch Menüsü: Açık (Bakım/Ayar Modu)</option>
+        </select>
 
         <br>
         <hr style="border-color: #444; margin: 20px 0;">
@@ -242,14 +257,13 @@
             }
         }
 
-        // Veritabanındaki Oyunları Oyuncu Ekranına Getir
         async function loadGamesToUI() {
             const listContainer = document.getElementById('dynamic-game-list');
             listContainer.innerHTML = 'Yükleniyor...';
 
             const { data: games, error } = await _supabase.from('games').select('*');
             if (error || !games || games.length === 0) {
-                listContainer.innerHTML = '<p style="color:#888;">Henüz eklenmiş bir oyun yok. Admin panelinden ekleyebilirsiniz.</p>';
+                listContainer.innerHTML = '<p style="color:#888;">Henüz eklenmiş oyun yok.</p>';
                 return;
             }
 
@@ -264,28 +278,49 @@
             });
         }
 
-        // Admin Tarafından Yeni Oyun Ekleme
-        async function adminAddGame() {
+        // Admin Dosya Yükleme ve Oyun Kaydı
+        async function adminUploadAndAddGame() {
             const title = document.getElementById('new-game-title').value.trim();
             const core = document.getElementById('new-game-core').value;
-            const rom_url = document.getElementById('new-game-url').value.trim();
+            const fileInput = document.getElementById('rom-file-input');
 
-            if (!title || !rom_url) {
-                alert("Lütfen oyun adını ve ROM linkini eksiksiz girin.");
+            if (!title || fileInput.files.length === 0) {
+                alert("Lütfen oyun adını yazın ve bir ROM (.zip) dosyası seçin.");
                 return;
             }
 
-            const { error } = await _supabase.from('games').insert([{ title, core, rom_url }]);
-            if (error) {
-                alert("Oyun eklenirken hata oluştu: " + error.message);
+            const file = fileInput.files[0];
+            const fileName = `${Date.now()}_${file.name}`;
+
+            alert("ROM dosyası Supabase Storage'a yükleniyor, lütfen bekleyin...");
+
+            const { data: uploadData, error: uploadError } = await _supabase.storage
+                .from('games')
+                .upload(fileName, file);
+
+            if (uploadError) {
+                alert("Yükleme hatası: " + uploadError.message);
+                return;
+            }
+
+            // Dosyanın genel (public) URL adresini alalım
+            const { data: publicUrlData } = _supabase.storage
+                .from('games')
+                .getPublicUrl(fileName);
+
+            const rom_url = publicUrlData.publicUrl;
+
+            // Veritabanına kaydet
+            const { error: dbError } = await _supabase.from('games').insert([{ title, core, rom_url }]);
+            if (dbError) {
+                alert("Veritabanı kayıt hatası: " + dbError.message);
             } else {
-                alert("Oyun başarıyla sisteme eklendi!");
+                alert("Oyun başarıyla yüklendi ve eklendi!");
                 document.getElementById('new-game-title').value = '';
-                document.getElementById('new-game-url').value = '';
+                document.getElementById('rom-file-input').value = '';
             }
         }
 
-        // Jeton Harcayarak Oyunu Başlat
         async function playGame(title, romUrl, coreType) {
             const { data: { user } } = await _supabase.auth.getUser();
             let { data } = await _supabase.from('profiles').select('tokens').eq('id', user.id).single();
@@ -298,20 +333,28 @@
                 document.getElementById('game-menu').style.display = 'none';
                 document.getElementById('emulator-container').style.display = 'block';
 
+                // DIP Switch Durumunu Admin panelinden alalım
+                const dipSwitchValue = document.getElementById('dip-switch-toggle').value === 'true';
+
                 // EmulatorJS Entegrasyonu
                 window.EJS_player = '#game';
                 window.EJS_gameUrl = romUrl; 
                 window.EJS_core = coreType;
                 window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/emulatorjs/emulatorjs@main/data/';
+                window.EJS_settings = {
+                    dipSwitches: dipSwitchValue
+                };
 
                 if (!document.getElementById('ejs-script')) {
                     const script = document.createElement('script');
                     script.id = 'ejs-script';
                     script.src = 'https://cdn.jsdelivr.net/gh/emulatorjs/emulatorjs@main/data/loader.js';
                     document.body.appendChild(script);
+                } else {
+                    location.reload(); // Farklı oyunlar arası geçiş için sayfayı tazele
                 }
             } else {
-                alert("Yetersiz jeton! Lütfen bakiye yükleyin.");
+                alert("Yetersiz jeton!");
             }
         }
 
